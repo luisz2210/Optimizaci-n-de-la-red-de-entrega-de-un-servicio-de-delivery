@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Delivery con Neo4j</title>
+    <!-- Tailwind CSS CDN para un estilo rápido y responsivo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Un gris azulado suave */
+        }
+        .container {
+            max-width: 1000px;
+        }
+        .card {
+            background-color: #ffffff;
+            border-radius: 1rem; /* Bordes más redondeados */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Sombra más pronunciada */
+        }
+        .input-group label {
+            font-weight: 600;
+            color: #334155; /* gris más oscuro */
+        }
+        .input-group input[type="text"],
+        .input-group input[type="number"] {
+            border-radius: 0.5rem;
+            border: 1px solid #cbd5e1; /* gris claro */
+            padding: 0.75rem 1rem;
+            width: 100%;
+            transition: border-color 0.2s;
+        }
+        .input-group input[type="text"]:focus,
+        .input-group input[type="number"]:focus {
+            outline: none;
+            border-color: #3b82f6; /* azul */
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+        .btn-primary {
+            background-color: #3b82f6; /* azul */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb; /* azul más oscuro al pasar el ratón */
+        }
+        .result-box {
+            background-color: #f8fafc; /* Fondo casi blanco para los resultados */
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            min-height: 50px;
+            overflow-x: auto; /* Para tablas o JSONs largos */
+            white-space: pre-wrap; /* Mantiene el formato JSON */
+        }
+        .json-viewer {
+            font-family: monospace;
+            font-size: 0.9em;
+            color: #334155;
+        }
+        .json-key { color: #881e4b; font-weight: bold; } /* Rojo oscuro */
+        .json-string { color: #15803d; } /* Verde oscuro */
+        .json-number { color: #2563eb; } /* Azul oscuro */
+        .json-boolean { color: #7c3aed; } /* Púrpura */
+        .json-null { color: #b91c1c; } /* Rojo */
+    </style>
+</head>
+<body class="p-4 sm:p-6 md:p-8">
+    <div class="container mx-auto">
+        <h1 class="text-4xl font-bold text-center text-gray-800 mb-8">Optimización de Red de Delivery</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            <!-- Card: Ruta Más Rápida -->
+            <div class="card p-6">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">1. Ruta Más Rápida</h2>
+                <div class="input-group mb-4">
+                    <label for="fastest_start" class="block text-sm mb-1">Origen:</label>
+                    <input type="text" id="fastest_start" placeholder="Ej. CD_Este" class="mt-1 block">
+                </div>
+                <div class="input-group mb-4">
+                    <label for="fastest_end" class="block text-sm mb-1">Destino:</label>
+                    <input type="text" id="fastest_end" placeholder="Ej. Las Mercedes" class="mt-1 block">
+                </div>
+                <button onclick="getFastestRoute()" class="btn-primary w-full">Buscar Ruta</button>
+                <div id="fastest_route_result" class="result-box mt-4 json-viewer"></div>
+            </div>
+
+            <!-- Card: Ruta Más Rápida con Zonas Bloqueadas -->
+            <div class="card p-6">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">2. Ruta Bloqueada</h2>
+                <div class="input-group mb-4">
+                    <label for="blocked_start" class="block text-sm mb-1">Origen (Zona):</label>
+                    <input type="text" id="blocked_start" placeholder="Ej. Altamira" class="mt-1 block">
+                </div>
+                <div class="input-group mb-4">
+                    <label for="blocked_end" class="block text-sm mb-1">Destino (Zona):</label>
+                    <input type="text" id="blocked_end" placeholder="Ej. Las Mercedes" class="mt-1 block">
+                </div>
+                <div class="input-group mb-4">
+                    <label for="blocked_zones" class="block text-sm mb-1">Zonas Bloqueadas (separar con coma):</label>
+                    <input type="text" id="blocked_zones" placeholder="Ej. Chacao,El Cafetal" class="mt-1 block">
+                </div>
+                <button onclick="getFastestRouteBlocked()" class="btn-primary w-full">Buscar Ruta</button>
+                <div id="fastest_route_blocked_result" class="result-box mt-4 json-viewer"></div>
+            </div>
+
+            <!-- Card: Zonas Directamente Accesibles -->
+            <div class="card p-6">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">3. Zonas Accesibles</h2>
+                <div class="input-group mb-4">
+                    <label for="accessible_centro" class="block text-sm mb-1">Centro de Distribución:</label>
+                    <input type="text" id="accessible_centro" placeholder="Ej. CD_Este" class="mt-1 block">
+                </div>
+                <div class="input-group mb-4">
+                    <label for="accessible_time" class="block text-sm mb-1">Tiempo Máximo (minutos):</label>
+                    <input type="number" id="accessible_time" placeholder="Ej. 12" class="mt-1 block">
+                </div>
+                <button onclick="getAccessibleZones()" class="btn-primary w-full">Buscar Zonas</button>
+                <div id="accessible_zones_result" class="result-box mt-4 json-viewer"></div>
+            </div>
+
+            <!-- Card: Rutas Congestionadas -->
+            <div class="card p-6">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">4. Rutas Congestionadas</h2>
+                <div class="input-group mb-4">
+                    <label for="congested_threshold" class="block text-sm mb-1">Umbral de Capacidad (opcional):</label>
+                    <input type="number" id="congested_threshold" placeholder="Ej. 100" class="mt-1 block">
+                </div>
+                <button onclick="getCongestedRoutes()" class="btn-primary w-full">Buscar Rutas</button>
+                <div id="congested_routes_result" class="result-box mt-4 json-viewer"></div>
+            </div>
+
+            <!-- Card: Conectividad de la Red -->
+            <div class="card p-6 md:col-span-2">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">5. Conectividad de la Red</h2>
+                <button onclick="checkNetworkConnectivity()" class="btn-primary w-full">Verificar Conectividad General</button>
+                <div id="connectivity_result" class="result-box mt-4 json-viewer"></div>
+            </div>
+
+            <!-- Card: Zonas Aisladas por Cierre de Zona -->
+            <div class="card p-6">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">6. Zonas Aisladas (Cierre de Zona)</h2>
+                <div class="input-group mb-4">
+                    <label for="isolated_zone_name" class="block text-sm mb-1">Zona Excluida:</label>
+                    <input type="text" id="isolated_zone_name" placeholder="Ej. Altamira" class="mt-1 block">
+                </div>
+                <button onclick="getIsolatedZonesByZoneClosure()" class="btn-primary w-full">Simular Cierre</button>
+                <div id="isolated_zones_by_zone_result" class="result-box mt-4 json-viewer"></div>
+            </div>
+
+            <!-- Card: Zonas Aisladas por Cierre de Ruta -->
+            <div class="card p-6">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">7. Zonas Aisladas (Cierre de Ruta)</h2>
+                <div class="input-group mb-4">
+                    <label for="isolated_route_start" class="block text-sm mb-1">Inicio de Ruta a Cerrar:</label>
+                    <input type="text" id="isolated_route_start" placeholder="Ej. Altamira" class="mt-1 block">
+                </div>
+                <div class="input-group mb-4">
+                    <label for="isolated_route_end" class="block text-sm mb-1">Fin de Ruta a Cerrar:</label>
+                    <input type="text" id="isolated_route_end" placeholder="Ej. Chacao" class="mt-1 block">
+                </div>
+                <button onclick="getIsolatedZonesByRouteClosure()" class="btn-primary w-full">Simular Cierre</button>
+                <div id="isolated_zones_by_route_result" class="result-box mt-4 json-viewer"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Función para mostrar los resultados en un formato JSON legible
+        function displayResult(elementId, data) {
+            const resultElement = document.getElementById(elementId);
+            if (data && typeof data === 'object') {
+                resultElement.innerHTML = jsonSyntaxHighlight(JSON.stringify(data, null, 2));
+            } else {
+                resultElement.textContent = data;
+            }
+        }
+
+        // Función para resaltar la sintaxis JSON
+        function jsonSyntaxHighlight(json) {
+            if (typeof json != 'string') {
+                json = JSON.stringify(json, undefined, 2);
+            }
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                let cls = 'json-number';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = 'json-key';
+                    } else {
+                        cls = 'json-string';
+                    }
+                } else if (/true|false/.test(match)) {
+                    cls = 'json-boolean';
+                } else if (/null/.test(match)) {
+                    cls = 'json-null';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+        }
+
+        // --- Funciones para llamar a los Endpoints de Flask ---
+
+        async function getFastestRoute() {
+            const start = document.getElementById('fastest_start').value;
+            const end = document.getElementById('fastest_end').value;
+            const url = `/fastest_route?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`;
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                displayResult('fastest_route_result', data);
+            } catch (error) {
+                displayResult('fastest_route_result', `Error: ${error.message}`);
+            }
+        }
+
+        async function getFastestRouteBlocked() {
+            const start = document.getElementById('blocked_start').value;
+            const end = document.getElementById('blocked_end').value;
+            const blockedZones = document.getElementById('blocked_zones').value;
+            const url = `/fastest_route_blocked?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&blocked_zones=${encodeURIComponent(blockedZones)}`;
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                displayResult('fastest_route_blocked_result', data);
+            } catch (error) {
+                displayResult('fastest_route_blocked_result', `Error: ${error.message}`);
+            }
+        }
+
+        async function getAccessibleZones() {
+            const centro = document.getElementById('accessible_centro').value;
+            const maxTime = document.getElementById('accessible_time').value;
+            const url = `/accessible_zones?centro=${encodeURIComponent(centro)}&max_time=${encodeURIComponent(maxTime)}`;
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                displayResult('accessible_zones_result', data);
+            } catch (error) {
+                displayResult('accessible_zones_result', `Error: ${error.message}`);
+            }
+        }
+
+        async function getCongestedRoutes() {
+            const threshold = document.getElementById('congested_threshold').value;
+            let url = `/congested_routes`;
+            if (threshold) {
+                url += `?capacity_threshold=${encodeURIComponent(threshold)}`;
+            }
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                displayResult('congested_routes_result', data);
+            } catch (error) {
+                displayResult('congested_routes_result', `Error: ${error.message}`);
+            }
+        }
+
+        async function checkNetworkConnectivity() {
+            const url = `/check_connectivity`;
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                displayResult('connectivity_result', data);
+            } catch (error) {
+                displayResult('connectivity_result', `Error: ${error.message}`);
+            }
+        }
+
+        async function getIsolatedZonesByZoneClosure() {
+            const excludedZone = document.getElementById('isolated_zone_name').value;
+            const url = `/isolated_zones_by_zone_closure?excluded_zone=${encodeURIComponent(excludedZone)}`;
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                displayResult('isolated_zones_by_zone_result', data);
+            } catch (error) {
+                displayResult('isolated_zones_by_zone_result', `Error: ${error.message}`);
+            }
+        }
+
+        async function getIsolatedZonesByRouteClosure() {
+            const startZone = document.getElementById('isolated_route_start').value;
+            const endZone = document.getElementById('isolated_route_end').value;
+            const url = `/isolated_zones_by_route_closure?start_zone=${encodeURIComponent(startZone)}&end_zone=${encodeURIComponent(endZone)}`;
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                displayResult('isolated_zones_by_route_result', data);
+            } catch (error) {
+                displayResult('isolated_zones_by_route_result', `Error: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>
