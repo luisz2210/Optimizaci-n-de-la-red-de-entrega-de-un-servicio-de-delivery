@@ -6,7 +6,7 @@
     <title>Sistema de Delivery con Neo4j</title>
     <!-- Tailwind CSS CDN para un estilo rápido y responsivo -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -18,7 +18,11 @@
         .card {
             background-color: #ffffff;
             border-radius: 1rem; /* Bordes más redondeados */
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Sombra más pronunciada */
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1); /* Sombra más pronunciada y suave */
+            transition: transform 0.2s ease-in-out;
+        }
+        .card:hover {
+            transform: translateY(-3px); /* Pequeño efecto hover */
         }
         .input-group label {
             font-weight: 600;
@@ -30,7 +34,7 @@
             border: 1px solid #cbd5e1; /* gris claro */
             padding: 0.75rem 1rem;
             width: 100%;
-            transition: border-color 0.2s;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
         .input-group input[type="text"]:focus,
         .input-group input[type="number"]:focus {
@@ -44,10 +48,12 @@
             padding: 0.75rem 1.5rem;
             border-radius: 0.5rem;
             font-weight: 600;
-            transition: background-color 0.2s ease-in-out;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
         }
         .btn-primary:hover {
             background-color: #2563eb; /* azul más oscuro al pasar el ratón */
+            transform: translateY(-1px);
         }
         .result-box {
             background-color: #f8fafc; /* Fondo casi blanco para los resultados */
@@ -57,6 +63,38 @@
             min-height: 50px;
             overflow-x: auto; /* Para tablas o JSONs largos */
             white-space: pre-wrap; /* Mantiene el formato JSON */
+            color: #334155;
+            font-size: 0.95rem;
+        }
+        .result-box h3 {
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #1e293b;
+        }
+        .result-box ul {
+            list-style: none;
+            padding: 0;
+        }
+        .result-box ul li {
+            padding: 0.25rem 0;
+            border-bottom: 1px dotted #e2e8f0;
+        }
+        .result-box ul li:last-child {
+            border-bottom: none;
+        }
+        .result-box table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 0.5rem;
+        }
+        .result-box th, .result-box td {
+            border: 1px solid #e2e8f0;
+            padding: 0.5rem;
+            text-align: left;
+        }
+        .result-box th {
+            background-color: #eef2f6;
+            font-weight: 600;
         }
         .json-viewer {
             font-family: monospace;
@@ -88,7 +126,7 @@
                     <input type="text" id="fastest_end" placeholder="Ej. Las Mercedes" class="mt-1 block">
                 </div>
                 <button onclick="getFastestRoute()" class="btn-primary w-full">Buscar Ruta</button>
-                <div id="fastest_route_result" class="result-box mt-4 json-viewer"></div>
+                <div id="fastest_route_result" class="result-box mt-4"></div>
             </div>
 
             <!-- Card: Ruta Más Rápida con Zonas Bloqueadas -->
@@ -107,7 +145,7 @@
                     <input type="text" id="blocked_zones" placeholder="Ej. Chacao,El Cafetal" class="mt-1 block">
                 </div>
                 <button onclick="getFastestRouteBlocked()" class="btn-primary w-full">Buscar Ruta</button>
-                <div id="fastest_route_blocked_result" class="result-box mt-4 json-viewer"></div>
+                <div id="fastest_route_blocked_result" class="result-box mt-4"></div>
             </div>
 
             <!-- Card: Zonas Directamente Accesibles -->
@@ -122,7 +160,7 @@
                     <input type="number" id="accessible_time" placeholder="Ej. 12" class="mt-1 block">
                 </div>
                 <button onclick="getAccessibleZones()" class="btn-primary w-full">Buscar Zonas</button>
-                <div id="accessible_zones_result" class="result-box mt-4 json-viewer"></div>
+                <div id="accessible_zones_result" class="result-box mt-4"></div>
             </div>
 
             <!-- Card: Rutas Congestionadas -->
@@ -133,14 +171,14 @@
                     <input type="number" id="congested_threshold" placeholder="Ej. 100" class="mt-1 block">
                 </div>
                 <button onclick="getCongestedRoutes()" class="btn-primary w-full">Buscar Rutas</button>
-                <div id="congested_routes_result" class="result-box mt-4 json-viewer"></div>
+                <div id="congested_routes_result" class="result-box mt-4"></div>
             </div>
 
             <!-- Card: Conectividad de la Red -->
             <div class="card p-6 md:col-span-2">
                 <h2 class="text-2xl font-semibold text-gray-700 mb-4">5. Conectividad de la Red</h2>
                 <button onclick="checkNetworkConnectivity()" class="btn-primary w-full">Verificar Conectividad General</button>
-                <div id="connectivity_result" class="result-box mt-4 json-viewer"></div>
+                <div id="connectivity_result" class="result-box mt-4"></div>
             </div>
 
             <!-- Card: Zonas Aisladas por Cierre de Zona -->
@@ -151,7 +189,7 @@
                     <input type="text" id="isolated_zone_name" placeholder="Ej. Altamira" class="mt-1 block">
                 </div>
                 <button onclick="getIsolatedZonesByZoneClosure()" class="btn-primary w-full">Simular Cierre</button>
-                <div id="isolated_zones_by_zone_result" class="result-box mt-4 json-viewer"></div>
+                <div id="isolated_zones_by_zone_result" class="result-box mt-4"></div>
             </div>
 
             <!-- Card: Zonas Aisladas por Cierre de Ruta -->
@@ -166,24 +204,122 @@
                     <input type="text" id="isolated_route_end" placeholder="Ej. Chacao" class="mt-1 block">
                 </div>
                 <button onclick="getIsolatedZonesByRouteClosure()" class="btn-primary w-full">Simular Cierre</button>
-                <div id="isolated_zones_by_route_result" class="result-box mt-4 json-viewer"></div>
+                <div id="isolated_zones_by_route_result" class="result-box mt-4"></div>
             </div>
 
         </div>
     </div>
 
     <script>
-        // Función para mostrar los resultados en un formato JSON legible
-        function displayResult(elementId, data) {
+        // Función principal para mostrar los resultados
+        function displayResult(elementId, data, endpoint) {
             const resultElement = document.getElementById(elementId);
-            if (data && typeof data === 'object') {
-                resultElement.innerHTML = jsonSyntaxHighlight(JSON.stringify(data, null, 2));
-            } else {
-                resultElement.textContent = data;
+            if (data.status === 'error') {
+                resultElement.innerHTML = `<p class="text-red-600 font-semibold">Error: ${data.message}</p>`;
+            } else if (data.status === 'info') {
+                resultElement.innerHTML = `<p class="text-blue-600 font-semibold">Info: ${data.message}</p>`;
+            } else if (data.status === 'warning') {
+                 resultElement.innerHTML = `<p class="text-yellow-600 font-semibold">Advertencia: ${data.message}</p>`;
+                 if (data.non_accessible_zones && data.non_accessible_zones.length > 0) {
+                     resultElement.innerHTML += `<h3>Zonas No Accesibles:</h3><ul>${data.non_accessible_zones.map(z => `<li>${z}</li>`).join('')}</ul>`;
+                 }
+                 if (data.isolated_zones && data.isolated_zones.length > 0) {
+                     resultElement.innerHTML += `<h3>Zonas Aisladas:</h3><ul>${data.isolated_zones.map(z => `<li>${z}</li>`).join('')}</ul>`;
+                 }
+            }
+            else {
+                // Delegar el renderizado a funciones específicas según el endpoint
+                switch (endpoint) {
+                    case 'fastest_route':
+                    case 'fastest_route_blocked':
+                        renderFastestRoute(resultElement, data);
+                        break;
+                    case 'accessible_zones':
+                        renderAccessibleZones(resultElement, data);
+                        break;
+                    case 'congested_routes':
+                        renderCongestedRoutes(resultElement, data);
+                        break;
+                    case 'check_connectivity':
+                        renderConnectivity(resultElement, data);
+                        break;
+                    case 'isolated_zones_by_zone_closure':
+                    case 'isolated_zones_by_route_closure':
+                        renderIsolatedZones(resultElement, data);
+                        break;
+                    default:
+                        // Si no hay una función específica, muestra el JSON formateado
+                        resultElement.innerHTML = `<pre class="json-viewer">${jsonSyntaxHighlight(JSON.stringify(data, null, 2))}</pre>`;
+                }
             }
         }
 
-        // Función para resaltar la sintaxis JSON
+        // --- Funciones de Renderizado Específicas ---
+
+        function renderFastestRoute(element, data) {
+            if (data.path && data.path.length > 0) {
+                element.innerHTML = `
+                    <h3>Ruta Encontrada:</h3>
+                    <p><strong>Camino:</strong> ${data.path.join(' &rarr; ')}</p>
+                    <p><strong>Tiempo Total:</strong> ${data.total_time_minutes.toFixed(2)} minutos</p>
+                `;
+            } else {
+                element.innerHTML = `<p>No se encontró una ruta.</p>`;
+            }
+        }
+
+        function renderAccessibleZones(element, data) {
+            if (data.accessible_zones && data.accessible_zones.length > 0) {
+                let html = '<h3>Zonas Accesibles:</h3><ul>';
+                data.accessible_zones.forEach(zone => {
+                    html += `<li>${zone.zona} (Tiempo: ${zone.tiempo} min)</li>`;
+                });
+                html += '</ul>';
+                element.innerHTML = html;
+            } else {
+                element.innerHTML = `<p>No se encontraron zonas directamente accesibles en el tiempo especificado.</p>`;
+            }
+        }
+
+        function renderCongestedRoutes(element, data) {
+            if (data.congested_routes && data.congested_routes.length > 0) {
+                let html = '<h3>Rutas Congestionadas:</h3>';
+                html += '<table class="w-full text-sm">';
+                html += '<thead><tr><th>Origen</th><th>Destino</th><th>Tiempo (min)</th><th>Tráfico</th><th>Capacidad</th></tr></thead>';
+                html += '<tbody>';
+                data.congested_routes.forEach(route => {
+                    html += `<tr>
+                        <td>${route.ZonaOrigen}</td>
+                        <td>${route.ZonaDestino}</td>
+                        <td>${route.Tiempo}</td>
+                        <td>${route.Trafico}</td>
+                        <td>${route.Capacidad !== null ? route.Capacidad : 'N/A'}</td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+                element.innerHTML = html;
+            } else {
+                element.innerHTML = `<p>No se encontraron rutas congestionadas.</p>`;
+            }
+        }
+
+        function renderConnectivity(element, data) {
+            let html = `<p>${data.message}</p>`;
+            if (data.non_accessible_zones && data.non_accessible_zones.length > 0) {
+                html += `<h3>Zonas No Accesibles:</h3><ul>${data.non_accessible_zones.map(z => `<li>${z}</li>`).join('')}</ul>`;
+            }
+            element.innerHTML = html;
+        }
+
+        function renderIsolatedZones(element, data) {
+            let html = `<p>${data.message}</p>`;
+            if (data.isolated_zones && data.isolated_zones.length > 0) {
+                html += `<h3>Zonas Aisladas:</h3><ul>${data.isolated_zones.map(z => `<li>${z}</li>`).join('')}</ul>`;
+            }
+            element.innerHTML = html;
+        }
+
+        // Función para resaltar la sintaxis JSON (como respaldo)
         function jsonSyntaxHighlight(json) {
             if (typeof json != 'string') {
                 json = JSON.stringify(json, undefined, 2);
@@ -208,95 +344,59 @@
 
         // --- Funciones para llamar a los Endpoints de Flask ---
 
-        async function getFastestRoute() {
-            const start = document.getElementById('fastest_start').value;
-            const end = document.getElementById('fastest_end').value;
-            const url = `/fastest_route?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`;
+        async function callApi(endpoint, params, resultElementId) {
+            let url = `/${endpoint}`;
+            if (params) {
+                const queryString = new URLSearchParams(params).toString();
+                url += `?${queryString}`;
+            }
             try {
                 const response = await fetch(url);
                 const data = await response.json();
-                displayResult('fastest_route_result', data);
+                displayResult(resultElementId, data, endpoint); // Pasar el endpoint a displayResult
             } catch (error) {
-                displayResult('fastest_route_result', `Error: ${error.message}`);
+                displayResult(resultElementId, { status: 'error', message: error.message }, endpoint);
             }
+        }
+
+        async function getFastestRoute() {
+            const start = document.getElementById('fastest_start').value;
+            const end = document.getElementById('fastest_end').value;
+            await callApi('fastest_route', { start, end }, 'fastest_route_result');
         }
 
         async function getFastestRouteBlocked() {
             const start = document.getElementById('blocked_start').value;
             const end = document.getElementById('blocked_end').value;
-            const blockedZones = document.getElementById('blocked_zones').value;
-            const url = `/fastest_route_blocked?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&blocked_zones=${encodeURIComponent(blockedZones)}`;
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                displayResult('fastest_route_blocked_result', data);
-            } catch (error) {
-                displayResult('fastest_route_blocked_result', `Error: ${error.message}`);
-            }
+            const blocked_zones = document.getElementById('blocked_zones').value;
+            await callApi('fastest_route_blocked', { start, end, blocked_zones }, 'fastest_route_blocked_result');
         }
 
         async function getAccessibleZones() {
             const centro = document.getElementById('accessible_centro').value;
-            const maxTime = document.getElementById('accessible_time').value;
-            const url = `/accessible_zones?centro=${encodeURIComponent(centro)}&max_time=${encodeURIComponent(maxTime)}`;
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                displayResult('accessible_zones_result', data);
-            } catch (error) {
-                displayResult('accessible_zones_result', `Error: ${error.message}`);
-            }
+            const max_time = document.getElementById('accessible_time').value;
+            await callApi('accessible_zones', { centro, max_time }, 'accessible_zones_result');
         }
 
         async function getCongestedRoutes() {
-            const threshold = document.getElementById('congested_threshold').value;
-            let url = `/congested_routes`;
-            if (threshold) {
-                url += `?capacity_threshold=${encodeURIComponent(threshold)}`;
-            }
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                displayResult('congested_routes_result', data);
-            } catch (error) {
-                displayResult('congested_routes_result', `Error: ${error.message}`);
-            }
+            const capacity_threshold = document.getElementById('congested_threshold').value;
+            const params = capacity_threshold ? { capacity_threshold } : {};
+            await callApi('congested_routes', params, 'congested_routes_result');
         }
 
         async function checkNetworkConnectivity() {
-            const url = `/check_connectivity`;
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                displayResult('connectivity_result', data);
-            } catch (error) {
-                displayResult('connectivity_result', `Error: ${error.message}`);
-            }
+            await callApi('check_connectivity', null, 'connectivity_result');
         }
 
         async function getIsolatedZonesByZoneClosure() {
-            const excludedZone = document.getElementById('isolated_zone_name').value;
-            const url = `/isolated_zones_by_zone_closure?excluded_zone=${encodeURIComponent(excludedZone)}`;
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                displayResult('isolated_zones_by_zone_result', data);
-            } catch (error) {
-                displayResult('isolated_zones_by_zone_result', `Error: ${error.message}`);
-            }
+            const excluded_zone = document.getElementById('isolated_zone_name').value;
+            await callApi('isolated_zones_by_zone_closure', { excluded_zone }, 'isolated_zones_by_zone_result');
         }
 
         async function getIsolatedZonesByRouteClosure() {
-            const startZone = document.getElementById('isolated_route_start').value;
-            const endZone = document.getElementById('isolated_route_end').value;
-            const url = `/isolated_zones_by_route_closure?start_zone=${encodeURIComponent(startZone)}&end_zone=${encodeURIComponent(endZone)}`;
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                displayResult('isolated_zones_by_route_result', data);
-            } catch (error) {
-                displayResult('isolated_zones_by_route_result', `Error: ${error.message}`);
-            }
+            const start_zone = document.getElementById('isolated_route_start').value;
+            const end_zone = document.getElementById('isolated_route_end').value;
+            await callApi('isolated_zones_by_route_closure', { start_zone, end_zone }, 'isolated_zones_by_route_result');
         }
     </script>
 </body>
