@@ -6,7 +6,6 @@ app = Flask(__name__)
 CORS(app) # Habilitar CORS para toda la aplicación
 
 # Configuración de conexión a Neo4j
-# Asegúrate de que tu instancia de Neo4j esté corriendo y que la contraseña sea la correcta.
 # Por defecto, la URL es bolt://localhost:7687 y el usuario es neo4j.
 URI = "bolt://localhost:7687"
 USERNAME = "neo4j"
@@ -313,5 +312,4 @@ def get_isolated_zones_by_route_closure():
 
 
 if __name__ == '__main__':
-    # Asegúrate de que tu instancia Neo4j esté corriendo ANTES de ejecutar Flask
     app.run(debug=True)
